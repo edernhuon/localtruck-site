@@ -22,6 +22,9 @@ const DEPARTMENTS = {
   '971': 'Guadeloupe', '972': 'Martinique', '973': 'Guyane', '974': 'La Réunion', '976': 'Mayotte',
 };
 
+/** Régions qui ont leur page (« /food-trucks/bretagne/ »). Les autres viendront avec leurs communes (voir communes-*.json). */
+const REGIONS = [{ slug: 'bretagne', name: 'Bretagne', prep: 'en Bretagne', departments: ['22', '29', '35', '56'] }];
+
 /** « Côtes-d’Armor » → « cotes-d-armor » */
 const slugify = (s) => String(s).toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const clean = (s, max) => String(s == null ? '' : s).replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max || 120);
@@ -90,4 +93,4 @@ async function loadPlaces(root, opts) {
   catch (e) { console.error('SEO : liste des food trucks non lue (' + e.message + ')'); return null; }
 }
 
-module.exports = { DEPARTMENTS, slugify, normalize, host, fromFile, fromSupabase, loadPlaces, configFromRepo };
+module.exports = { DEPARTMENTS, REGIONS, slugify, normalize, host, fromFile, fromSupabase, loadPlaces, configFromRepo };

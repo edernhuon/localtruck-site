@@ -202,7 +202,7 @@ function build(out, opts) {
   }
   if (opts.places && opts.places.length) {
     withVilles = opts.places.length > 0; // avant la génération : le pied de page des pages villes porte aussi le lien
-    const r = buildVilles(opts.places, { page, esc, SITE }, null);
+    const r = buildVilles(opts.places, { page, esc, SITE }, null, { communes: opts.communes });
     for (const [rel, html] of Object.entries(r.files)) write(rel, html);
     write('sitemap-villes.xml', xml(r.urls));
     villes = r.urls.map((u) => u.loc);
@@ -225,7 +225,14 @@ function build(out, opts) {
   return { pages: PAGES.map((p) => p.dir), urls: urls.map((u) => u.loc), villes };
 }
 
-module.exports = { build, PAGES, SITE };
+/** Communes (nom|département|latitude|longitude, une par ligne) qui ont leur page « à proximité » même sans food truck chez elles. Fichier absent ou illisible : liste vide. */
+function loadCommunes(file) {
+  try {
+    return fs.readFileSync(file, 'utf8').split(/\r?\n/).filter((l) => l && !l.startsWith('#')).map((l) => { const [n, d, la, lo] = l.split('|'); return [n, d, Number(la), Number(lo)]; });
+  } catch (e) { return []; }
+}
+
+module.exports = { build, loadCommunes, PAGES, SITE };
 
 if (require.main === module) {
   (async () => {
@@ -240,7 +247,7 @@ if (require.main === module) {
       const before = (() => { try { return fs.readdirSync(path.join(dest, 'food-truck')).length; } catch (e) { return 0; } })();
       if (before >= 10 && places.length < before / 2) { console.error('SEO : ' + places.length + ' fiches lues pour ' + before + ' pages existantes : arrêt par précaution'); process.exit(1); }
     }
-    const r = build(dest, { places, villesOnly });
+    const r = build(dest, { places, villesOnly, communes: loadCommunes(path.join(__dirname, 'communes-bretagne.txt')) });
     console.log('SEO : ' + r.pages.length + ' pages' + (r.villes.length ? ', ' + r.villes.length + ' pages villes' + (places ? ' (' + places.length + ' food trucks)' : ' (reprises telles quelles)') : ', pas de pages villes')
       + ', sitemap de ' + (r.urls.length + r.villes.length) + ' adresses');
   })().catch((e) => { console.error('SEO : ' + (e && e.message || e)); process.exit(1); });
