@@ -2,7 +2,7 @@
  * Fabriquées à partir de la liste des fiches visibles de tous (voir seo-places.js) : aucune donnée personnelle, pas de compte Instagram, pas de téléphone.
  * Le gabarit (page, esc, SITE…) est fourni par build-seo.js. */
 'use strict';
-const { DEPARTMENTS, REGIONS, slugify, host } = require('./seo-places.js');
+const { DEPARTMENTS, REGIONS, slugify } = require('./seo-places.js');
 
 /** « à Lorient », « au Trévoux », « aux Sables-d’Olonne », « à La Rochelle ». */
 function aVille(city) {
@@ -178,7 +178,7 @@ ${proBox(esc(av))}`,
 
       for (const p of list) {
         const where = p.usual.length
-          ? `<h2>Où le trouver</h2><div class="usual"><span class="lbl">Emplacements habituels${p.usualSource && host(p.usualSource) && !/instagram\.com$/.test(host(p.usualSource)) ? ' (source : ' + esc(host(p.usualSource)) + ')' : ''}</span>${p.usual.map((u) => '<div>' + esc(u) + '</div>').join('')}</div><p class="mu">Ces emplacements peuvent changer : la carte LocalTruck montre ceux annoncés pour aujourd’hui.</p>`
+          ? `<h2>Où le trouver</h2><div class="usual"><span class="lbl">Emplacements connus, à confirmer auprès du food truck</span>${p.usual.map((u) => '<div>' + esc(u) + '</div>').join('')}</div><p class="mu">Ces emplacements peuvent changer : la carte LocalTruck montre ceux annoncés pour aujourd’hui.</p>`
           : '<h2>Où le trouver</h2><p>Les emplacements du jour s’affichent sur la carte LocalTruck dès que le food truck les annonce.</p>';
         add(truckDir(p), {
           title: fit(70, p.name + ' : food truck ' + av + ' | LocalTruck', p.name + ' | food truck ' + av, p.name + ' | LocalTruck'),
