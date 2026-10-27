@@ -128,6 +128,8 @@ footer{border-top:1px solid var(--bd);margin-top:48px;padding-top:20px;padding-b
 footer nav{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:12px}
 .crumbs{font-size:14px;color:var(--mu);margin-top:18px}.crumbs a{color:var(--mu)}
 .mu{color:var(--mu);font-size:15px}
+code,pre{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:2px 6px;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--tx);user-select:all;-webkit-user-select:all;word-break:break-all}
+pre{padding:12px;overflow-x:auto;white-space:pre-wrap}pre code{border:0;padding:0}
 .cols{columns:2 220px;column-gap:28px;padding-left:20px}.cols li{break-inside:avoid}
 .truck{border-top:1px solid var(--bd);margin-top:20px;padding-top:4px}.truck h2{margin:12px 0 2px;font-size:20px}.truck ul{margin:6px 0}`;
 

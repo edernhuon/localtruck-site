@@ -2,8 +2,8 @@
  * Deux sources, dans cet ordre :
  *   1. un fichier JSON privé (variable SEO_PLACES=/chemin/fichier.json), jamais dans le dépôt public ;
  *   2. la base Supabase, par la fonction publique nearby_listings (la même que celle de la carte) : seulement les fiches visibles de tous.
- * Une fiche = { slug, name, cuisine, city, department, usual: [lieux habituels], usualSource }.
- * Aucune donnée personnelle ici : ni Instagram, ni téléphone, ni adresse précise. */
+ * Une fiche = { slug, name, cuisine, city, department, usual: [lieux habituels], usualSource, lat?, lng? }.
+ * Aucune donnée personnelle ici : ni Instagram, ni téléphone, ni adresse précise (lat/lng ne servent qu'à classer les food trucks par distance). */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -34,8 +34,10 @@ function normalize(list) {
     const name = clean(r && r.name, 60); const city = clean(r && r.city, 60); const dep = clean(r && r.department, 3).toUpperCase();
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) || !name || !city || !DEPARTMENTS[dep] || seen.has(slug)) continue;
     seen.add(slug);
+    const lat = Number(r.lat); const lng = Number(r.lng); const geo = r.lat != null && r.lng != null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
     out.push({
       slug, name, city, department: dep, cuisine: clean(r.cuisine, 80),
+      ...(geo ? { lat, lng } : {}),       // sert seulement à calculer « à proximité » (distances arrondies) : jamais écrit dans les pages
       usual: (Array.isArray(r.usual) ? r.usual : []).map((x) => clean(x, 120)).filter(Boolean).slice(0, 12),
       usualSource: /^https:\/\//.test(String(r.usual_source || r.usualSource || '')) ? clean(r.usual_source || r.usualSource, 200) : '',
     });
