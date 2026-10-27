@@ -15,6 +15,17 @@ const fit = (max, ...c) => c.find((x) => x.length <= max) || clip(c[c.length - 1
 const plural = (n, un, plus) => n + ' ' + (n > 1 ? plus : un);
 const joinList = (a) => (a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1]);
 
+/* Pastille du food truck : initiales et couleur stable (calculée à partir de l'adresse de la fiche). */
+const PALETTE = ['#FFC83D', '#3DDC97', '#8DB6FF', '#FF8E68', '#FFD76B', '#5BE3A6', '#C9B6FF'];
+const STOP = new Set(['le', 'la', 'les', 'l', 'de', 'du', 'des', 'd', 'chez', 'et', 'au', 'aux', 'a', 'the']);
+function initials(name) {
+  const w = String(name).normalize('NFD').replace(/\p{M}/gu, '').replace(/[^A-Za-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  const k = w.filter((x) => !STOP.has(x.toLowerCase())); const u = k.length ? k : w;
+  if (!u.length) return '?';
+  return (u[0][0] + (u[1] ? u[1][0] : (u[0][1] || ''))).toUpperCase();
+}
+const colorOf = (slug) => PALETTE[[...String(slug)].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) % PALETTE.length];
+
 /* « Autour de » : les food trucks à moins de NEAR_KM d'un point (distance à vol d'oiseau). Les coordonnées ne servent qu'à classer : seule la distance arrondie est écrite. */
 const NEAR_KM = 40;
 const FAR_KM = 80;        // une ville sans food truck à moins de NEAR_KM garde sa page si un food truck est à moins de FAR_KM (sinon : pas de page vide)
@@ -30,7 +41,7 @@ function buildVilles(places, T, today, extra) {
   const dir = (...p) => p.join('/');
   const add = (d, p, priority) => { files[d + '/index.html'] = page(Object.assign({ dir: d }, p)); urls.push({ loc: SITE + '/' + d + '/', priority, ...(today ? { lastmod: today } : {}) }); };
   const crumbs = (items) => ({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: items.map(([name, d], i) => ({ '@type': 'ListItem', position: i + 1, name, item: SITE + '/' + (d ? d + '/' : '') })) });
-  const trail = (items) => '<nav class="crumbs" aria-label="Fil d’Ariane">' + items.map(([name, d]) => (d === null ? '<span>' + esc(name) + '</span>' : '<a href="/' + (d ? d + '/' : '') + '">' + esc(name) + '</a>')).join(' › ') + '</nav>';
+  const trail = (items) => '<nav class="crumbs" aria-label="Fil d’Ariane">' + items.map(([name, d]) => (d === null ? '<span>' + esc(name) + '</span>' : '<a href="/' + (d ? d + '/' : '') + '">' + esc(name) + '</a>')).join('') + '</nav>';
 
   // regroupement département → ville → fiches
   const deps = new Map();
@@ -72,7 +83,21 @@ function buildVilles(places, T, today, extra) {
   const regDir = (r) => dir('food-trucks', r.slug);
   /** Fil d'Ariane jusqu'au département (région comprise quand elle a sa page). */
   const up = (code) => [['LocalTruck', ''], ['Food trucks', 'food-trucks']].concat(regionOf(code) ? [[regionOf(code).name, regDir(regionOf(code))]] : [], [[DEPARTMENTS[code], depDir(code)]]);
-  const nearItem = ({ p, d }) => `<li><a href="/${truckDir(p)}/">${esc(p.name)}</a>${p.cuisine ? ' <span class="mu">· ' + esc(p.cuisine) + '</span>' : ''} <span class="mu">· <a href="/${cityDir(p.department, p.city)}/">${esc(p.city)}</a> · à environ ${Math.max(1, Math.round(d))} km</span></li>`;
+  /* éléments visuels (même charte que l'application) : le texte et les liens restent ceux que lisent les moteurs de recherche */
+  const avatar = (p, cls) => `<span class="avatar${cls ? ' ' + cls : ''}" style="background:${colorOf(p.slug)}" aria-hidden="true">${esc(initials(p.name))}</span>`;
+  const nearItem = ({ p, d }) => `<li class="near glass">${avatar(p)}<span class="t"><a class="nm" href="/${truckDir(p)}/">${esc(p.name)}</a><span>${p.cuisine ? esc(p.cuisine) + ' · ' : ''}<a href="/${cityDir(p.department, p.city)}/">${esc(p.city)}</a></span></span>${d != null ? '<span class="km">à ' + Math.max(1, Math.round(d)) + ' km</span>' : ''}</li>`;
+  const nears = (items) => '<ul class="nears">' + items.map(nearItem).join('') + '</ul>';
+  const truckCard = (p) => `<li class="truck glass"><div class="row">${avatar(p)}<div><h3><a href="/${truckDir(p)}/">${esc(p.name)}</a></h3><div class="tags">${p.cuisine ? '<span class="tag">' + esc(p.cuisine) + '</span>' : ''}<span class="tag unv">Pas encore vérifié</span></div></div></div>`
+    + (p.usual.length ? '<div class="usual"><span class="lbl">Habituellement</span>' + p.usual.slice(0, 4).map((u) => '<div>' + esc(u) + '</div>').join('') + '</div>' : '')
+    + `<div class="acts"><a class="btn sm" href="/${truckDir(p)}/">Voir la fiche</a><a class="btn sm primary" href="/#/t/${p.slug}">Sur la carte</a></div></li>`;
+  const qa = (items) => '<div class="faq">' + items.filter(Boolean).map(([q, a], i) => '<details class="glass"' + (i ? '' : ' open') + '><summary><h3>' + q + '</h3></summary><p>' + a + '</p></details>').join('\n') + '</div>';
+  const callout = (h, txt, label, href) => '<section class="callout glass"><div><h2>' + h + '</h2><p>' + txt + '</p></div><a class="btn primary" href="' + (href || '/') + '">' + (label || 'Ouvrir la carte') + '</a></section>';
+  const stats = (cells) => '<div class="stats">' + cells.map(([n, l, ac]) => '<div class="stat glass"><div class="n' + (ac ? ' ac' : '') + '">' + n + '</div><span class="lbl">' + l + '</span></div>').join('') + '</div>';
+  const proBox = (where) => '<section class="box glass"><span class="lbl">Vous tenez un food truck ?</span><h2>Faites-vous trouver ' + where + '</h2><p>Fiche gratuite, sans commission : annoncez où vous serez, vos habitués sont prévenus.</p><p><a class="btn primary" href="/pour-les-food-trucks/">Créer ma fiche</a></p></section>';
+  const chips = (items) => '<ul class="chips">' + items.map(([href, label, n]) => '<li><a class="chip" href="' + href + '">' + esc(label) + (n ? '<em>' + n + '</em>' : '') + '</a></li>').join('') + '</ul>';
+  /** « à <span>Quimper</span> », « au <span>Trévoux</span> » : le nom de la ville en orange, le texte reste identique. */
+  const accent = (av, name) => { const tail = String(name).replace(/^(Le|Les)\s/, ''); const i = av.lastIndexOf(tail); return i < 0 ? esc(av) : esc(av.slice(0, i)) + '<span class="ac">' + esc(tail) + '</span>' + esc(av.slice(i + tail.length)); };
+  const OPEN_TXT = 'Un food truck change souvent de lieu d’un jour à l’autre. La carte LocalTruck affiche <strong>qui est ouvert maintenant, à quelle heure et à quel endroit</strong>, d’après ce que chaque food truck annonce lui-même.';
 
   const itemList = (list) => ({ '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: list.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: SITE + '/' + truckDir(p) + '/', name: p.name })) });
   const establishment = (p) => ({
@@ -98,8 +123,7 @@ ${regionsWithPage.length ? '<h2>Les régions</h2><ul class="cols">' + regionsWit
 <h2>Savoir qui est ouvert ce soir</h2>
 <p>Les listes ci-dessus donnent une idée de qui est près de chez vous. Pour voir <strong>qui est ouvert maintenant, à quelle heure et à quel endroit</strong>, ouvrez la carte : elle se base sur votre position (jamais enregistrée) et sur les emplacements annoncés par les food trucks eux-mêmes.</p>
 <p class="cta-row"><a class="cta" href="/">Ouvrir la carte</a></p>
-<h2>Vous tenez un food truck ?</h2>
-<p>Référencez-vous gratuitement : vos clients vous trouvent et sont prévenus quand vous changez de lieu. <a href="/pour-les-food-trucks/">Voir comment faire</a>.</p>`,
+${proBox('partout en France')}`,
   }, '0.7');
 
   /* ---------- départements et villes */
@@ -111,15 +135,16 @@ ${regionsWithPage.length ? '<h2>Les régions</h2><ul class="cols">' + regionsWit
       title: fit(70, nb ? 'Food trucks – ' + dn + ' (' + code + ') : liste par ville | LocalTruck' : 'Food trucks – ' + dn + ' (' + code + ') : villes à proximité | LocalTruck', 'Food trucks – ' + dn + ' (' + code + ') | LocalTruck'),
       desc: clip(nb ? plural(nb, 'food truck repéré', 'food trucks repérés') + ' – ' + dn + ' (' + code + '), dans ' + plural(cities.size, 'ville', 'villes') + ' : cuisine, emplacements habituels et carte pour savoir qui est ouvert ce soir.'
         : 'Pas encore de food truck référencé en ' + dn + ' (' + code + '), mais ' + plural(vois.length, 'ville a', 'villes ont') + ' des food trucks à moins de ' + NEAR_KM + ' km : où les trouver et qui est ouvert ce soir.', 170),
-      h1: 'Food trucks : ' + dn + ' (' + code + ')',
+      h1: 'Food trucks : ' + dn + ' (' + code + ')', h1Html: 'Food trucks : <span class="ac">' + esc(dn) + '</span> (' + code + ')',
       ld: [crumbs(up(code))],
       top: trail(up(code).slice(0, -1).concat([[dn, null]])), body: `
 <p class="lead">${nb ? plural(nb, 'food truck', 'food trucks') + ' repéré' + (nb > 1 ? 's' : '') + ' – ' + esc(dn) + ' (' + code + '), dans ' + plural(cities.size, 'ville', 'villes') + '. Touchez une ville pour voir qui y est et ce qu’il sert.'
   : 'Aucun food truck n’est encore référencé en ' + esc(dn) + ' (' + code + '), mais ' + plural(vois.length, 'ville a', 'villes ont') + ' des food trucks à moins de ' + NEAR_KM + ' km.'}</p>
 ${cityList.length ? '<h2>Les villes</h2><ul class="cols">' + cityList.map(([c, l]) => `<li><a href="/${cityDir(code, c)}/">${esc(c)}</a> <span class="mu">· ${plural(l.length, 'food truck', 'food trucks')}</span></li>`).join('') + '</ul>' : ''}
 ${vois.length ? '<h2>Villes proches de food trucks</h2><p class="mu">Pas encore de food truck référencé dans ces villes, mais il y en a à moins de ' + NEAR_KM + ' km.</p><ul class="cols">' + vois.map((v) => `<li><a href="/${cityDir(code, v.name)}/">${esc(v.name)}</a> <span class="mu">· ${plural(v.nb, 'food truck', 'food trucks')} à proximité</span></li>`).join('') + '</ul>' : ''}
-${nb ? '<h2>Les food trucks</h2><ul>' + [...cities.values()].flat().sort((a, b) => a.name.localeCompare(b.name, 'fr')).map((p) => `<li><a href="/${truckDir(p)}/">${esc(p.name)}</a>${p.cuisine ? ' <span class="mu">· ' + esc(p.cuisine) + '</span>' : ''} <span class="mu">· ${esc(p.city)}</span></li>`).join('') + '</ul>' : ''}
-<p class="cta-row"><a class="cta" href="/">Voir la carte en direct</a></p>`,
+${nb ? '<h2>Les food trucks</h2>' + nears([...cities.values()].flat().sort((a, b) => a.name.localeCompare(b.name, 'fr')).map((p) => ({ p }))) : ''}
+<p class="cta-row"><a class="cta" href="/">Voir la carte en direct</a></p>
+${proBox('– ' + esc(dn))}`,
     }, '0.6');
 
     for (const [city, list] of cityList) {
@@ -132,45 +157,49 @@ ${nb ? '<h2>Les food trucks</h2><ul>' + [...cities.values()].flat().sort((a, b) 
         title: fit(70, ...(around.length ? ['Food truck ' + av + ' (' + code + ') : ' + plural(total, 'food truck', 'food trucks') + ' à proximité | LocalTruck'] : []), 'Food truck ' + av + ' (' + code + ') : liste et où les trouver | LocalTruck', 'Food truck ' + av + ' (' + code + ') | LocalTruck'),
         desc: clip(around.length ? plural(total, 'food truck', 'food trucks') + ' ' + av + ' et à moins de ' + NEAR_KM + ' km (' + dn + ') : ce qu’ils servent, où les trouver, et la carte pour savoir qui est ouvert ce soir. Gratuit.'
           : plural(list.length, 'food truck', 'food trucks') + ' ' + av + ' (' + dn + ') : ce qu’ils servent, leurs emplacements habituels, et la carte pour savoir qui est ouvert ce soir. Gratuit.', 170),
-        h1: 'Food truck ' + av + ' (' + code + ')',
+        h1: 'Food truck ' + av + ' (' + code + ')', h1Html: 'Food truck ' + accent(av, city) + ' (' + code + ')',
         ld: [crumbs(up(code).concat([[city, cityDir(code, city)]])), itemList(list.concat(around.map((x) => x.p)))],
         top: trail(up(code).concat([[city, null]])), body: `
 <p class="lead">Où trouver un food truck ${esc(av)} ? LocalTruck recense <strong>${plural(list.length, 'food truck', 'food trucks')}</strong> ${esc(av)} (${esc(dn)})${around.length ? ' et ' + plural(around.length, 'autre', 'autres') + ' à moins de ' + NEAR_KM + ' km' : ''}. Voici qui ils sont, ce qu’ils servent et, quand ils l’annoncent, où les retrouver.</p>
-${list.map((p) => `<section class="truck"><h2><a href="/${truckDir(p)}/">${esc(p.name)}</a></h2>${p.cuisine ? '<p class="mu">' + esc(p.cuisine) + '</p>' : ''}${p.usual.length ? '<ul>' + p.usual.slice(0, 4).map((u) => '<li>' + esc(u) + '</li>').join('') + '</ul>' : ''}<p><a href="/${truckDir(p)}/">Voir la fiche de ${esc(p.name)}</a></p></section>`).join('\n')}
-${around.length ? '<h2>Food trucks dans les environs (moins de ' + NEAR_KM + ' km)</h2><ul>' + around.map(nearItem).join('') + '</ul>' : ''}
-<h2>Qui est ouvert ce soir ${esc(av)} ?</h2>
-<p>Un food truck change souvent de lieu d’un jour à l’autre. La carte LocalTruck affiche <strong>qui est ouvert maintenant, à quelle heure et à quel endroit</strong>, d’après ce que chaque food truck annonce lui-même. Vous pouvez aussi suivre vos préférés et être prévenu s’ils changent de lieu.</p>
-<p class="cta-row"><a class="cta" href="/">Ouvrir la carte</a></p>
+${stats([[list.length, esc(av), true], [around.length, 'à moins de ' + NEAR_KM + ' km'], ['0 €', 'gratuit, sans compte']])}
+${callout('Qui est ouvert ce soir ' + esc(av) + ' ?', OPEN_TXT + ' Vous pouvez aussi suivre vos préférés et être prévenu s’ils changent de lieu.')}
+<h2>Food trucks ${esc(av)}</h2>
+<ul class="cards two">${list.map(truckCard).join('')}</ul>
+${around.length ? '<h2>Food trucks dans les environs (moins de ' + NEAR_KM + ' km)</h2>' + nears(around) : ''}
 <h2>Questions fréquentes</h2>
-<h3>Où trouver un food truck ${esc(av)} ?</h3>
-<p>${list.length > 1 ? 'LocalTruck en recense ' + list.length + ' ' + esc(av) + ' : ' : 'LocalTruck en recense un ' + esc(av) + ' : '}${joinList(here)}${list.length > 5 ? ' et ' + (list.length - 5) + ' autre' + (list.length - 5 > 1 ? 's' : '') : ''}.${around.length ? ' D’autres sont installés à proximité, ' + joinList([...new Set(around.map((x) => esc(x.p.city)))].slice(0, 4)) + ' notamment.' : ''}</p>
-${cuisines.length ? '<h3>Que mange-t-on chez les food trucks ' + esc(av) + ' ?</h3><p>Au menu, entre autres : ' + esc(joinList(cuisines)) + '. Chaque fiche détaille ce que le food truck sert.</p>' : ''}
-<h3>Je tiens un foodtruck ${esc(av)} : comment être visible ?</h3>
-<p>Créez gratuitement votre fiche : vos clients voient où vous serez ce soir et sont prévenus d’un changement de lieu. <a href="/pour-les-food-trucks/">Voir comment faire</a>.</p>
-${others.length ? '<h2>Autres villes – ' + esc(dn) + '</h2><ul class="cols">' + others.map(([c, l]) => `<li><a href="/${cityDir(code, c)}/">${esc(c)}</a> <span class="mu">· ${plural(l.length, 'food truck', 'food trucks')}</span></li>`).join('') + '</ul>' : ''}`,
+${qa([
+  ['Où trouver un food truck ' + esc(av) + ' ?', (list.length > 1 ? 'LocalTruck en recense ' + list.length + ' ' + esc(av) + ' : ' : 'LocalTruck en recense un ' + esc(av) + ' : ') + joinList(here) + (list.length > 5 ? ' et ' + (list.length - 5) + ' autre' + (list.length - 5 > 1 ? 's' : '') : '') + '.' + (around.length ? ' D’autres sont installés à proximité, ' + joinList([...new Set(around.map((x) => esc(x.p.city)))].slice(0, 4)) + ' notamment.' : '')],
+  cuisines.length ? ['Que mange-t-on chez les food trucks ' + esc(av) + ' ?', 'Au menu, entre autres : ' + esc(joinList(cuisines)) + '. Chaque fiche détaille ce que le food truck sert.'] : null,
+  ['Je tiens un foodtruck ' + esc(av) + ' : comment être visible ?', 'Créez gratuitement votre fiche : vos clients voient où vous serez ce soir et sont prévenus d’un changement de lieu. <a href="/pour-les-food-trucks/">Voir comment faire</a>.'],
+])}
+${others.length ? '<h2>Autres villes – ' + esc(dn) + '</h2>' + chips(others.map(([c, l]) => ['/' + cityDir(code, c) + '/', c, l.length])) : ''}
+${proBox(esc(av))}`,
       }, '0.6');
 
       for (const p of list) {
         const where = p.usual.length
-          ? `<h2>Où le trouver</h2><p>Emplacements habituels${p.usualSource && host(p.usualSource) && !/instagram\.com$/.test(host(p.usualSource)) ? ' (source : ' + esc(host(p.usualSource)) + ')' : ''} :</p><ul>${p.usual.map((u) => '<li>' + esc(u) + '</li>').join('')}</ul><p class="mu">Ces emplacements peuvent changer : la carte LocalTruck montre ceux annoncés pour aujourd’hui.</p>`
+          ? `<h2>Où le trouver</h2><div class="usual"><span class="lbl">Emplacements habituels${p.usualSource && host(p.usualSource) && !/instagram\.com$/.test(host(p.usualSource)) ? ' (source : ' + esc(host(p.usualSource)) + ')' : ''}</span>${p.usual.map((u) => '<div>' + esc(u) + '</div>').join('')}</div><p class="mu">Ces emplacements peuvent changer : la carte LocalTruck montre ceux annoncés pour aujourd’hui.</p>`
           : '<h2>Où le trouver</h2><p>Les emplacements du jour s’affichent sur la carte LocalTruck dès que le food truck les annonce.</p>';
         add(truckDir(p), {
           title: fit(70, p.name + ' : food truck ' + av + ' | LocalTruck', p.name + ' | food truck ' + av, p.name + ' | LocalTruck'),
           desc: clip(p.name + ', food truck ' + av + ' (' + dn + ')' + (p.cuisine ? ' – ' + p.cuisine : '') + '. Où le trouver ce soir : emplacements habituels et carte en direct.', 170),
           h1: p.name,
           ld: [crumbs(up(code).concat([[city, cityDir(code, city)], [p.name, truckDir(p)]])), establishment(p)],
-          top: trail(up(code).concat([[city, cityDir(code, city)], [p.name, null]])), body: `
+          top: trail(up(code).concat([[city, cityDir(code, city)], [p.name, null]])) + avatar(p, 'lg'), body: `
+<div class="tags">${p.cuisine ? '<span class="tag">' + esc(p.cuisine) + '</span>' : ''}<span class="tag">${esc(p.city)}</span><span class="tag unv">Pas encore vérifié</span></div>
 <p class="lead">${esc(p.name)} est un food truck${p.cuisine ? ' (' + esc(p.cuisine.toLowerCase()) + ')' : ''} présent ${esc(av)} (${esc(dn)}).</p>
 ${where}
 <p class="cta-row"><a class="cta" href="/#/t/${p.slug}">Voir la fiche sur la carte</a></p>
-${(() => { const nb = near(hasGeo(p) ? p : centreOf(list), (q) => q.slug === p.slug, 5); return nb.length ? '<h2>Autres food trucks à proximité</h2><ul>' + nb.map(nearItem).join('') + '</ul>' : ''; })()}
+${(() => { const nb = near(hasGeo(p) ? p : centreOf(list), (q) => q.slug === p.slug, 5); return nb.length ? '<h2>Autres food trucks à proximité</h2>' + nears(nb) : ''; })()}
 <p>Tous les <a href="/${cityDir(code, city)}/">food trucks ${esc(av)}</a> · <a href="/${depDir(code)}/">food trucks – ${esc(dn)}</a></p>
-<p class="mu">Vous êtes ${esc(p.name)} ? <a href="/#/t/${p.slug}/reprendre">Reprenez gratuitement votre fiche</a> pour annoncer vos emplacements et prévenir vos clients.</p>
+<section class="box glass"><span class="lbl">Vous êtes ${esc(p.name)} ?</span>
 <h2>Faites connaître cette page</h2>
+<p><a href="/#/t/${p.slug}/reprendre">Reprenez gratuitement votre fiche</a> pour annoncer vos emplacements et prévenir vos clients.</p>
 <p>Ajoutez ce lien à votre site ou à la présentation de vos réseaux sociaux : vos clients vous retrouvent plus facilement. Touchez le texte pour le sélectionner, puis copiez-le.</p>
 <p><code>${SITE}/${truckDir(p)}/</code></p>
 <p class="mu">Pour un site web :</p>
-<pre><code>&lt;a href="${SITE}/${truckDir(p)}/"&gt;Retrouvez-nous sur LocalTruck&lt;/a&gt;</code></pre>`,
+<pre><code>&lt;a href="${SITE}/${truckDir(p)}/"&gt;Retrouvez-nous sur LocalTruck&lt;/a&gt;</code></pre>
+</section>`,
         }, '0.5');
       }
     }
@@ -180,21 +209,20 @@ ${(() => { const nb = near(hasGeo(p) ? p : centreOf(list), (q) => q.slug === p.s
       add(cityDir(code, v.name), {
         title: fit(70, 'Food truck ' + av + ' (' + code + ') : ' + plural(v.nb, 'food truck', 'food trucks') + ' à proximité | LocalTruck', 'Food truck ' + av + ' (' + code + ') | LocalTruck'),
         desc: clip('Pas encore de food truck référencé ' + av + ', mais ' + plural(v.nb, 'food truck', 'food trucks') + ' à moins de ' + r + ' km (' + dn + ') : ce qu’ils servent, où les trouver et qui est ouvert ce soir. Gratuit.', 170),
-        h1: 'Food truck ' + av + ' (' + code + ')',
+        h1: 'Food truck ' + av + ' (' + code + ')', h1Html: 'Food truck ' + accent(av, v.name) + ' (' + code + ')',
         ld: [crumbs(up(code).concat([[v.name, cityDir(code, v.name)]])), itemList(v.around.map((x) => x.p))],
         top: trail(up(code).concat([[v.name, null]])), body: `
 <p class="lead">Où trouver un food truck ${esc(av)} ? Aucun food truck n’est encore référencé ${esc(av)} sur LocalTruck, mais <strong>${plural(v.nb, 'food truck', 'food trucks')}</strong> ${v.nb > 1 ? 'sont installés' : 'est installé'} à moins de ${r} km.</p>
+${callout('Qui est ouvert ce soir près de ' + esc(v.name) + ' ?', OPEN_TXT.replace('d’un jour à l’autre.', 'd’un jour à l’autre, et certains se déplacent d’une commune à l’autre.'))}
 <h2>Les food trucks les plus proches</h2>
-<ul>${v.around.map(nearItem).join('')}</ul>
-<h2>Qui est ouvert ce soir près de ${esc(v.name)} ?</h2>
-<p>Un food truck change souvent de lieu d’un jour à l’autre, et certains se déplacent d’une commune à l’autre. La carte LocalTruck affiche <strong>qui est ouvert maintenant, à quelle heure et à quel endroit</strong>, d’après ce que chaque food truck annonce lui-même. Vous pouvez aussi suivre vos préférés et être prévenu s’ils changent de lieu.</p>
-<p class="cta-row"><a class="cta" href="/">Ouvrir la carte</a></p>
+${nears(v.around)}
 <h2>Questions fréquentes</h2>
-<h3>Y a-t-il un food truck ${esc(av)} ?</h3>
-<p>Pas encore de fiche ${esc(av)} sur LocalTruck. Les plus proches : ${joinList(v.around.slice(0, 3).map((x) => esc(x.p.name) + ' (' + esc(x.p.city) + ', à environ ' + Math.max(1, Math.round(x.d)) + ' km)'))}.</p>
-<h3>Je tiens un foodtruck ${esc(av)} : comment être visible ?</h3>
-<p>Créez gratuitement votre fiche : vos clients voient où vous serez ce soir et sont prévenus d’un changement de lieu. <a href="/pour-les-food-trucks/">Voir comment faire</a>.</p>
-<p>Tous les <a href="/${depDir(code)}/">food trucks – ${esc(dn)}</a></p>`,
+${qa([
+  ['Y a-t-il un food truck ' + esc(av) + ' ?', 'Pas encore de fiche ' + esc(av) + ' sur LocalTruck. Les plus proches : ' + joinList(v.around.slice(0, 3).map((x) => esc(x.p.name) + ' (' + esc(x.p.city) + ', à environ ' + Math.max(1, Math.round(x.d)) + ' km)')) + '.'],
+  ['Je tiens un foodtruck ' + esc(av) + ' : comment être visible ?', 'Créez gratuitement votre fiche : vos clients voient où vous serez ce soir et sont prévenus d’un changement de lieu. <a href="/pour-les-food-trucks/">Voir comment faire</a>.'],
+])}
+<p>Tous les <a href="/${depDir(code)}/">food trucks – ${esc(dn)}</a></p>
+${proBox(esc(av))}`,
       }, '0.4');
     }
   }
@@ -207,7 +235,7 @@ ${(() => { const nb = near(hasGeo(p) ? p : centreOf(list), (q) => q.slug === p.s
     add(regDir(r), {
       title: fit(70, 'Food trucks ' + r.prep + ' : par département et par ville | LocalTruck', 'Food trucks ' + r.prep + ' | LocalTruck'),
       desc: clip('Les food trucks ' + r.prep + ' par département et par ville : ' + plural(nbR, 'food truck repéré', 'food trucks repérés') + (nbVois ? ', et les villes qui en ont à proximité' : '') + '. Ce qu’ils servent, où les trouver, qui est ouvert ce soir. Gratuit.', 170),
-      h1: 'Food trucks ' + r.prep,
+      h1: 'Food trucks ' + r.prep, h1Html: 'Food trucks ' + accent(r.prep, r.name),
       ld: [crumbs([['LocalTruck', ''], ['Food trucks', 'food-trucks'], [r.name, regDir(r)]])],
       top: trail([['LocalTruck', ''], ['Food trucks', 'food-trucks'], [r.name, null]]), body: `
 <p class="lead">LocalTruck recense <strong>${plural(nbR, 'food truck', 'food trucks')}</strong> ${esc(r.prep)}, dans ${plural(villesR, 'ville', 'villes')}${nbVois ? ', et ' + plural(nbVois, 'autre ville a', 'autres villes ont') + ' des food trucks à proximité' : ''}. Choisissez votre département, puis votre ville.</p>
@@ -215,11 +243,8 @@ ${rd.map(([code, cities]) => {
         const cl = [...cities.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'fr'));
         return `<h2><a href="/${depDir(code)}/">${esc(DEPARTMENTS[code])} (${code})</a></h2>` + (cl.length ? '<ul class="cols">' + cl.map(([c, l]) => `<li><a href="/${cityDir(code, c)}/">${esc(c)}</a> <span class="mu">· ${plural(l.length, 'food truck', 'food trucks')}</span></li>`).join('') + '</ul>' : '<p class="mu">Pas encore de food truck référencé ; <a href="/' + depDir(code) + '/">voir les villes proches de food trucks</a>.</p>');
       }).join('\n')}
-<h2>Qui est ouvert ce soir ?</h2>
-<p>La carte LocalTruck affiche <strong>qui est ouvert maintenant, à quelle heure et à quel endroit</strong>, d’après ce que chaque food truck annonce lui-même.</p>
-<p class="cta-row"><a class="cta" href="/">Ouvrir la carte</a></p>
-<h2>Vous tenez un food truck ${esc(r.prep)} ?</h2>
-<p>Référencez-vous gratuitement : vos clients vous trouvent et sont prévenus quand vous changez de lieu. <a href="/pour-les-food-trucks/">Voir comment faire</a>.</p>`,
+${callout('Qui est ouvert ce soir ?', 'La carte LocalTruck affiche <strong>qui est ouvert maintenant, à quelle heure et à quel endroit</strong>, d’après ce que chaque food truck annonce lui-même.')}
+${proBox(esc(r.prep))}`,
     }, '0.7');
   }
   return { files, urls };

@@ -23,7 +23,7 @@ const slug = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').rep
 
 /* ------------------------------------------------------------------ contenu */
 const li = (items) => '<ul>' + items.map((x) => '<li>' + x + '</li>').join('') + '</ul>';
-const faq = (items) => items.map(([q, a]) => '<h3>' + q + '</h3><p>' + a + '</p>').join('\n');
+const faq = (items) => '<div class="faq">' + items.map(([q, a], i) => '<details class="glass"' + (i ? '' : ' open') + '><summary><h3>' + q + '</h3></summary><p>' + a + '</p></details>').join('\n') + '</div>';
 const legalBody = (intro, blocks) => '<p class="lead">' + intro + '</p>' + blocks.map(([t, x]) => '<h2 id="' + slug(t) + '">' + esc(t) + '</h2><p>' + mail(x) + '</p>').join('\n');
 
 const PAGES = [
@@ -113,32 +113,77 @@ ${faq([
 ];
 
 /* ------------------------------------------------------------------ gabarit */
-const CSS = `:root{--bg:#0B0B0D;--s1:#16161A;--bd:#2B2B33;--tx:#F4F2EE;--mu:#A9A49C;--ac:#FF6A3D;--ac-tx:#FF8E68}
+const CSS = `@font-face{font-family:"Archivo";src:url("/assets/fonts/archivo-var.woff") format("woff");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+:root{--bg:#0B0B0D;--tx:#F7F5F1;--mu:rgba(247,245,241,.72);--mu2:rgba(247,245,241,.5);--ln:rgba(255,255,255,.14);--bd:rgba(255,255,255,.22);
+--glass:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));--hi:inset 0 1px 0 rgba(255,255,255,.22);--shadow:0 16px 40px rgba(0,0,0,.42);
+--s1:rgba(255,255,255,.06);--s2:rgba(255,255,255,.1);--ac:#FF6A3D;--ac-tx:#FF8E68;--ac-tint:rgba(255,106,61,.16);--ac-bd:rgba(255,106,61,.55);--ac-glow:rgba(255,106,61,.35);
+--font:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
 *{box-sizing:border-box}html{background:var(--bg)}
-body{margin:0;color:var(--tx);font:400 17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Inter","DejaVu Sans",sans-serif;background:var(--bg)}
-a{color:var(--ac-tx)}header,main,footer{max-width:760px;margin:0 auto;padding:0 20px}
-header{display:flex;align-items:center;gap:12px;padding-top:18px;padding-bottom:12px}
-header a{display:flex;align-items:center;gap:10px;color:var(--tx);text-decoration:none;font-weight:800;font-size:20px}
-header img{width:36px;height:36px;border-radius:9px}
-h1{font-size:clamp(28px,6vw,40px);line-height:1.15;margin:24px 0 8px;letter-spacing:-.02em}
-h2{font-size:22px;margin:32px 0 6px}h3{font-size:17px;margin:20px 0 2px}
-p,li{color:#DAD6CF}.lead{font-size:19px;color:var(--tx)}li{margin:6px 0}
-.cta-row{margin:32px 0}.cta{display:inline-block;background:var(--ac);color:#0B0B0D;font-weight:800;text-decoration:none;padding:14px 24px;border-radius:14px}
-footer{border-top:1px solid var(--bd);margin-top:48px;padding-top:20px;padding-bottom:40px;color:var(--mu);font-size:14px}
-footer nav{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:12px}
-.crumbs{font-size:14px;color:var(--mu);margin-top:18px}.crumbs a{color:var(--mu)}
-.mu{color:var(--mu);font-size:15px}
-code,pre{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:2px 6px;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--tx);user-select:all;-webkit-user-select:all;word-break:break-all}
-pre{padding:12px;overflow-x:auto;white-space:pre-wrap}pre code{border:0;padding:0}
-.cols{columns:2 220px;column-gap:28px;padding-left:20px}.cols li{break-inside:avoid}
-.truck{border-top:1px solid var(--bd);margin-top:20px;padding-top:4px}.truck h2{margin:12px 0 2px;font-size:20px}.truck ul{margin:6px 0}`;
+body{margin:0;color:var(--tx);font:400 16px/1.6 var(--font);-webkit-font-smoothing:antialiased;
+background:url("/assets/grain.png"),url("/assets/blueprint-dark.svg") no-repeat right -90px top 60px/420px auto,radial-gradient(circle at 0% -4%,rgba(255,106,61,.3),transparent 46%) no-repeat,var(--bg)}
+a{color:var(--ac-tx);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:980px;margin:0 auto;padding:0 18px}
+h1,h2,.wide,.avatar,.stat .n,.km{font-weight:800;font-stretch:125%;font-variation-settings:"wdth" 125;text-transform:uppercase;letter-spacing:-.005em}
+.lbl,.crumbs a,.crumbs span,.btn,.tag,.chip{font-weight:700;font-stretch:118%;font-variation-settings:"wdth" 118;text-transform:uppercase;letter-spacing:.1em}
+.lbl{font-size:10.5px;color:var(--mu);letter-spacing:.13em}
+.glass{background:var(--glass);border:1px solid var(--bd);border-radius:22px;box-shadow:var(--shadow),var(--hi)}
+.top{position:sticky;top:0;z-index:5;padding:12px 0;background:linear-gradient(rgba(11,11,13,.88),rgba(11,11,13,.6));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--ln)}
+.top .wrap{display:flex;align-items:center;gap:12px}.top .sp{flex:1}
+.brand{display:flex;align-items:center;gap:10px;color:var(--tx);font-size:17px;font-weight:800;font-stretch:125%;font-variation-settings:"wdth" 125;text-transform:uppercase}
+.brand:hover{text-decoration:none}.brand img{width:34px;height:34px;border-radius:10px}.brand .ac{color:var(--ac)}
+.btn,.cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:8px 20px;border-radius:16px;font-size:12.5px;color:var(--tx);background:var(--s2);border:1px solid var(--bd);white-space:nowrap;text-decoration:none}
+.btn:hover,.cta:hover{text-decoration:none}
+.btn.primary,.cta{background:var(--ac);color:#0B0B0D;border-color:var(--ac);box-shadow:0 10px 28px var(--ac-glow);font-weight:700;font-stretch:118%;font-variation-settings:"wdth" 118;text-transform:uppercase;letter-spacing:.1em}
+.btn.sm{min-height:38px;padding:4px 14px;font-size:11px;border-radius:13px}
+.crumbs{display:flex;flex-wrap:wrap;gap:6px 8px;margin:26px 0 16px}
+.crumbs a,.crumbs span{font-size:10.5px;color:var(--mu);padding:6px 11px;border-radius:999px;background:var(--s1);border:1px solid var(--ln)}
+.crumbs span{color:var(--tx);border-color:var(--ac-bd);background:var(--ac-tint)}
+h1{margin:0;font-size:clamp(30px,8vw,60px);line-height:1.04}main>h1:first-child{margin-top:32px}h1 .ac{color:var(--ac)}
+h2{font-size:19px;line-height:1.2;margin:40px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--ln)}
+h2 a{color:var(--tx)}h3{font-size:17px;line-height:1.3;margin:20px 0 4px}
+p,li{color:var(--mu)}strong{color:var(--tx)}.lead{font-size:17.5px;margin:16px 0 0;max-width:680px}
+.mu{color:var(--mu2);font-size:14.5px}ul,ol{padding-left:22px}li{margin:6px 0}
+.cta-row{margin:28px 0}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,200px));gap:10px;margin:24px 0 0}
+.stat{padding:14px 14px 12px;border-radius:18px}.stat .n{font-size:30px;line-height:1}.stat .n.ac{color:var(--ac)}.stat .lbl{display:block;margin-top:8px;font-size:10px;letter-spacing:.1em;overflow-wrap:anywhere}
+.callout{margin:18px 0 0;padding:18px 20px;display:flex;align-items:center;gap:18px;background:linear-gradient(145deg,var(--ac-tint),rgba(255,106,61,.04));border-color:var(--ac-bd)}
+.callout>div{flex:1}.callout h2{margin:0 0 4px;padding:0;border:0;font-size:16px}.callout p{margin:0;font-size:14.5px}
+.cards,.nears{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.cards>*,.nears>*{min-width:0;margin:0}
+.truck{padding:18px}.truck .row{display:flex;align-items:center;gap:14px}.truck h3{margin:0;font-size:18px;line-height:1.15}
+.truck h3 a,.near .nm{color:var(--tx);font-weight:800;font-stretch:125%;font-variation-settings:"wdth" 125;text-transform:uppercase}
+.avatar{width:56px;height:56px;border-radius:17px;display:grid;place-items:center;font-size:21px;color:#0B0B0D;flex:none}
+.avatar.lg{width:84px;height:84px;font-size:32px;border-radius:24px;margin-bottom:16px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}.tag{font-size:10px;padding:4px 9px;border-radius:999px;background:var(--s2);border:1px solid var(--ln);color:var(--mu)}.tag.unv{color:var(--mu2);border-style:dashed}
+.usual{margin:14px 0 0;padding:12px 14px;border-radius:14px;background:var(--s1);border:1px solid var(--ln);font-size:14.5px}
+.usual .lbl{display:block;margin-bottom:6px;font-size:9.5px}.usual div{color:var(--mu)}
+.acts{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.acts .btn{flex:1}
+.near{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px}.near .avatar{width:42px;height:42px;border-radius:13px;font-size:16px}
+.near .t{flex:1;min-width:0}.near .nm{display:block;font-size:14px;line-height:1.25;overflow-wrap:anywhere}.near .t span{font-size:13.5px;color:var(--mu)}.near .t span a{color:var(--mu);text-decoration:underline}
+.km{font-size:12px;padding:6px 10px;border-radius:12px;background:var(--ac-tint);border:1px solid var(--ac-bd);color:var(--ac-tx);white-space:nowrap;text-transform:none}
+.faq details{margin-bottom:10px;border-radius:18px}.faq summary{list-style:none;cursor:pointer;padding:15px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.faq summary::-webkit-details-marker{display:none}.faq summary h3{margin:0;font-size:16px;color:var(--tx)}
+.faq summary::after{content:"+";color:var(--ac);font-size:22px;line-height:1}.faq details[open] summary::after{content:"\\2013"}
+.faq details p{margin:0;padding:0 18px 16px}
+ul.cols{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+ul.cols li{margin:0;padding:11px 14px;border-radius:14px;background:var(--s1);border:1px solid var(--ln);font-size:15px}ul.cols li a{color:var(--tx);font-weight:700}ul.cols .mu{font-size:13px}
+.chips{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:8px}.chips li{margin:0}
+.chip{display:inline-block;font-size:10.5px;padding:10px 14px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);color:var(--tx)}.chip:hover{text-decoration:none;border-color:var(--ac-bd)}.chip em{font-style:normal;color:var(--ac-tx);margin-left:6px}
+.box{margin-top:40px;padding:22px}.box h2{margin:6px 0 10px;padding:0;border:0}.box p{margin:8px 0}
+code,pre{background:rgba(0,0,0,.35);border:1px solid var(--ln);border-radius:10px;padding:2px 6px;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--tx);user-select:all;-webkit-user-select:all;word-break:break-all}
+pre{padding:12px;overflow-x:auto;white-space:pre-wrap}pre code{border:0;padding:0;background:none}
+footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--ln);color:var(--mu2);font-size:13.5px}
+footer nav{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:14px}footer nav a{color:var(--mu);font-weight:600}
+@media (min-width:760px){.cards.two,.nears{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media (max-width:520px){.callout{flex-direction:column;align-items:stretch}.top .btn{padding:4px 10px;font-size:10px}.brand{font-size:15px}}`;
 
 const NAV = [['/trouver-un-food-truck/', 'Trouver un food truck'], ['/pour-les-food-trucks/', 'Pour les food trucks'], ['/regles-des-avis/', 'Règles des avis'],
   ['/conditions-utilisation/', 'Conditions d’utilisation'], ['/confidentialite/', 'Confidentialité'], ['/mentions-legales/', 'Mentions légales']];
 const NAV_VILLES = ['/food-trucks/', 'Food trucks par ville'];
 let withVilles = false; // vrai quand les pages villes existent : le lien du pied de page n'est ajouté que dans ce cas
 
-function page({ dir, title, desc, h1, body, top, ld: more }) {
+const HEADER = '<header class="top"><div class="wrap"><a class="brand" href="/"><img src="/assets/icon-192.png" alt="" width="34" height="34"><span>Local<span class=\"ac\">Truck</span></span></a><span class="sp"></span><a class="btn primary sm" href="/">Ouvrir la carte</a></div></header>';
+
+function page({ dir, title, desc, h1, h1Html, body, top, ld: more }) {
   const url = SITE + '/' + dir + '/';
   const ld = { '@context': 'https://schema.org', '@type': 'WebPage', name: title, description: desc, url, inLanguage: 'fr', isPartOf: { '@type': 'WebSite', name: 'LocalTruck', url: SITE + '/' } };
   return `<!doctype html>
@@ -156,18 +201,19 @@ function page({ dir, title, desc, h1, body, top, ld: more }) {
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(title)}"><meta name="twitter:description" content="${esc(desc)}"><meta name="twitter:image" content="${OG}">
 <link rel="icon" href="/favicon.ico" sizes="48x48"><link rel="icon" type="image/png" href="/assets/favicon-96.png" sizes="96x96"><link rel="icon" type="image/png" href="/assets/icon-192.png" sizes="192x192"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 ${[ld].concat(more || []).map((x) => '<script type="application/ld+json">' + JSON.stringify(x) + '</script>').join('\n')}
+<link rel="preload" href="/assets/fonts/archivo-var.woff" as="font" type="font/woff" crossorigin>
 <style>${CSS}</style>
 </head>
 <body>
-<header><a href="/"><img src="/assets/icon-192.png" alt="" width="36" height="36">LocalTruck</a></header>
-<main>
-${top || ''}<h1>${esc(h1)}</h1>
+${HEADER}
+<main class="wrap">
+${top || ''}<h1>${h1Html || esc(h1)}</h1>
 ${body}
 </main>
-<footer>
+<footer><div class="wrap">
 <nav aria-label="Pages du site"><a href="/">Application</a>${(withVilles ? [NAV[0], NAV_VILLES].concat(NAV.slice(1)) : NAV).map(([h, t]) => '<a href="' + h + '">' + esc(t) + '</a>').join('')}</nav>
 <div>LocalTruck : la carte gratuite des food trucks, partout en France. Contact : <a href="mailto:${L.LEGAL.contact}">${L.LEGAL.contact}</a></div>
-</footer>
+</div></footer>
 </body>
 </html>
 `;
@@ -179,8 +225,8 @@ function notFound() {
 <title>Page introuvable – LocalTruck</title><style>${CSS}</style>
 <script>/* lien court d'un food truck (https://localtruck.fr/t/nom, …/t/nom/reprendre) : GitHub Pages sert cette page, on renvoie vers l'application */
 (function(){var m=/^\\/t\\/([a-z0-9]+(?:-[a-z0-9]+)*)(\\/reprendre)?\\/?$/i.exec(location.pathname);if(m&&m[1].length<=60)location.replace('/#/t/'+m[1].toLowerCase()+(m[2]?'/reprendre':''));})();</script></head>
-<body><header><a href="/"><img src="/assets/icon-192.png" alt="" width="36" height="36">LocalTruck</a></header>
-<main><h1>Page introuvable</h1><p class="lead">Cette adresse n’existe pas (ou plus).</p><p class="cta-row"><a class="cta" href="/">Ouvrir la carte des food trucks</a></p></main></body></html>
+<body>${HEADER}
+<main class="wrap"><h1>Page introuvable</h1><p class="lead">Cette adresse n’existe pas (ou plus).</p><p class="cta-row"><a class="cta" href="/">Ouvrir la carte des food trucks</a></p></main></body></html>
 `;
 }
 
