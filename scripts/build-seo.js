@@ -138,7 +138,7 @@ h1,h2,.wide,.avatar,.stat .n,.km{font-weight:800;font-stretch:125%;font-variatio
 .crumbs{display:flex;flex-wrap:wrap;gap:6px 8px;margin:26px 0 16px}
 .crumbs a,.crumbs span{font-size:10.5px;color:var(--mu);padding:6px 11px;border-radius:999px;background:var(--s1);border:1px solid var(--ln)}
 .crumbs span{color:var(--tx);border-color:var(--ac-bd);background:var(--ac-tint)}
-h1{margin:0;font-size:clamp(30px,8vw,60px);line-height:1.04}main>h1:first-child{margin-top:32px}h1 .ac{color:var(--ac)}
+h1,h2,h3{overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}h1{margin:0;font-size:clamp(28px,8vw,60px);line-height:1.04}main>h1:first-child{margin-top:32px}h1 .ac{color:var(--ac)}
 h2{font-size:19px;line-height:1.2;margin:40px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--ln)}
 h2 a{color:var(--tx)}h3{font-size:17px;line-height:1.3;margin:20px 0 4px}
 p,li{color:var(--mu)}strong{color:var(--tx)}.lead{font-size:17.5px;margin:16px 0 0;max-width:680px}
@@ -174,7 +174,8 @@ pre{padding:12px;overflow-x:auto;white-space:pre-wrap}pre code{border:0;padding:
 footer{margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--ln);color:var(--mu2);font-size:13.5px}
 footer nav{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:14px}footer nav a{color:var(--mu);font-weight:600}
 @media (min-width:760px){.cards.two,.nears{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
-@media (max-width:520px){.callout{flex-direction:column;align-items:stretch}.top .btn{padding:4px 10px;font-size:10px}.brand{font-size:15px}}`;
+@media (max-width:520px){.callout{flex-direction:column;align-items:stretch}.top .btn{padding:4px 10px;font-size:10px;letter-spacing:.05em}.brand{font-size:15px;gap:8px}.brand img{width:30px;height:30px}}
+@media (max-width:400px){.wrap{padding:0 14px}.top .btn{padding:4px 8px;letter-spacing:.03em}.brand{font-size:14px}}`;
 
 const NAV = [['/trouver-un-food-truck/', 'Trouver un food truck'], ['/pour-les-food-trucks/', 'Pour les food trucks'], ['/regles-des-avis/', 'Règles des avis'],
   ['/conditions-utilisation/', 'Conditions d’utilisation'], ['/confidentialite/', 'Confidentialité'], ['/mentions-legales/', 'Mentions légales']];
