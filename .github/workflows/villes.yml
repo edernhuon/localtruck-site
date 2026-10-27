@@ -1,5 +1,7 @@
 name: Pages villes (référencement)
 
+# Fichier recopié depuis le dépôt du code par scripts/publish-web.sh : ne pas le modifier ici.
+
 # Chaque nuit, refait les pages « food truck par département, ville et nom » du site à partir des fiches visibles de tous
 # (la même liste publique que la carte). Ainsi une fiche retirée, reprise par son propriétaire ou ajoutée apparaît / disparaît du site le lendemain.
 # Ne touche qu'à /food-trucks/, /food-truck/ et sitemap-villes.xml de la branche gh-pages ; le reste du site n'est pas modifié.
