@@ -1,0 +1,46 @@
+name: Pages villes (référencement)
+
+# Chaque nuit, refait les pages « food truck par département, ville et nom » du site à partir des fiches visibles de tous
+# (la même liste publique que la carte). Ainsi une fiche retirée, reprise par son propriétaire ou ajoutée apparaît / disparaît du site le lendemain.
+# Ne touche qu'à /food-trucks/, /food-truck/ et sitemap-villes.xml de la branche gh-pages ; le reste du site n'est pas modifié.
+on:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seo-villes
+  cancel-in-progress: false
+
+jobs:
+  villes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fabriquer les pages
+        run: node scripts/build-seo.js site --villes-only --live
+      - name: Publier s'il y a du changement
+        working-directory: site
+        run: |
+          git add -A
+          if git diff --cached --quiet; then echo "Aucun changement"; exit 0; fi
+          git -c user.name=edernhuon -c user.email=edernhuon@users.noreply.github.com commit -q -m "Pages villes"
+          git push origin gh-pages
+      - name: Garder le dépôt actif
+        # GitHub arrête les tâches planifiées d'un dépôt public sans aucune activité pendant 60 jours : un petit commit par mois évite cela.
+        run: |
+          last=$(git log -1 --format=%ct); now=$(date +%s)
+          if [ $((now - last)) -gt 2592000 ]; then
+            git -c user.name=edernhuon -c user.email=edernhuon@users.noreply.github.com commit -q --allow-empty -m "Maintien du rafraîchissement nocturne"
+            git push origin HEAD:main
+          fi
